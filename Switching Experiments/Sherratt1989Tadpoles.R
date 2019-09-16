@@ -151,28 +151,82 @@ GenCI(p.vec = twenty.p, n.samples = 6, n.events = 30, n.sim = 10000)
 
 GenCI(p.vec = forty.p, n.samples = 6, n.events = 30, n.sim = 10000)
 
+### Estimate IS and create predicted 95% CI's for IS
 
+### Calculate IS for each relative abundance
 
+# ten prey
 
+ten.data.ind <- Tadpole.data %>% filter(NTreatment == 10)
 
+ten.data.PS <- ten.data.ind %>% mutate(PropAlt = 1 - Proportion)
 
+ten.data.PS <- ten.data.PS %>% group_by(RelativeDensity) %>% mutate(Diff.Prop = abs(Proportion - mean(Proportion)), 
+                                                                    Diff.Alt = abs(PropAlt - mean(PropAlt)))
 
+ten.data.PS <- ten.data.PS %>% mutate(PS = 1 - Diff.Prop)
 
+ten.data.IS <- ten.data.PS %>% group_by(RelativeDensity) %>% summarise(IS = mean(PS))
 
+# twenty prey
 
+twenty.data.ind <- Tadpole.data %>% filter(NTreatment == 20)
 
+twenty.data.PS <- twenty.data.ind %>% mutate(PropAlt = 1 - Proportion)
 
+twenty.data.PS <- twenty.data.PS %>% group_by(RelativeDensity) %>% mutate(Diff.Prop = abs(Proportion - mean(Proportion)), 
+                                                                          Diff.Alt = abs(PropAlt - mean(PropAlt)))
 
+twenty.data.PS <- twenty.data.PS %>% mutate(PS = 1 - Diff.Prop)
 
+twenty.data.IS <- twenty.data.PS %>% group_by(RelativeDensity) %>% summarise( IS = mean(PS))
 
+# forty prey
 
+forty.data.ind <- Tadpole.data %>% filter(NTreatment == 40)
 
+forty.data.PS <- forty.data.ind %>% mutate(PropAlt = 1 - Proportion)
 
+forty.data.PS <- forty.data.PS %>% group_by(RelativeDensity) %>% mutate(Diff.Prop = abs(Proportion - mean(Proportion)), 
+                                                                        Diff.Alt = abs(PropAlt - mean(PropAlt)))
 
+forty.data.PS <- forty.data.PS %>% mutate(PS = 1 - Diff.Prop)
 
+forty.data.IS <- forty.data.PS %>% group_by(RelativeDensity) %>% summarise(IS = mean(PS))
 
+### modify the CI function above to generate confidence intervals for IS
 
+GenCI_IS <- function(p.vec, n.samples, n.events, n.sim) {
+  
+  quant.data <- matrix(nrow = length(p.vec), ncol = 4)
+  
+  for(j in 1:length(p.vec)){
+    mat <- matrix(nrow = n.sim, ncol = n.samples)
+    PS <- matrix(nrow = n.sim, ncol = n.samples)
+    mean.prop <- vector(length = n.sim)
+    IS <- vector(length = n.sim)
+    
+    for(i in 1:n.sim){
+      mat[i,] <- rbinom(n = n.samples, size = n.events, prob = p.vec[j])
+      prop.mat <- mat/n.events
+      mean.prop[i] <- mean(prop.mat[i])
+      PS[i,] <- 1 - abs(prop.mat[i,] - mean.prop[i])
+      IS[i] <- mean(PS[i,])
+    }
+    
+    quant.data[j, ] <- c(p.vec[j], quantile(IS, probs = c(0.025, 0.5, 0.975)))
+  }
+  quant.data
+}
 
+# ten prey
 
+GenCI_IS(p.vec = ten.p, n.samples = 6, n.events = 30, n.sim = 10000)
 
+# twenty prey
 
+GenCI_IS(p.vec = twenty.p, n.samples = 6, n.events = 30, n.sim = 10000)
+
+# forty prey
+
+GenCI_IS(p.vec = forty.p, n.samples = 6, n.events = 30, n.sim = 10000)
