@@ -157,6 +157,83 @@ GenCI_EventNsVector(p.vec = Control.est.p, n.samples = 6, n.events = round(Contr
 
 GenCI_EventNsVector(p.vec = Elminius.est.p, n.samples = 6, n.events = round(Elminius.n$n), n.sim = 10000)
 
+### estimate IS and and create predicted 95% CI's for IS
+
+### calculate IS for each relative density
+
+# Balanus
+
+Balanus.data.PS <- Balanus.data %>% mutate(AltProp = 1 - ProportionBalanus)
+
+Balanus.data.PS <- Balanus.data.PS %>% group_by(Ratio) %>% mutate(Diff.Prop = abs(ProportionBalanus - mean(ProportionBalanus)), 
+                                                                  Diff.Alt = abs(AltProp - mean(AltProp)))
+
+Balanus.data.PS <- Balanus.data.PS %>% mutate(PS = 1 - Diff.Prop)
+
+Balanus.data.IS <- Balanus.data.PS %>% group_by(Ratio) %>% summarise(IS = mean(PS))
+
+# modify above confidence interval function to get CI's for IS
+
+GenCI_IS <- function(p.vec, n.samples, n.events, n.sim) {
+  
+  quant.data <- matrix(nrow = length(p.vec), ncol = 4)
+  
+  for(j in 1:length(p.vec)){
+    mat <- matrix(nrow = n.sim, ncol = n.samples)
+    PS <- matrix(nrow = n.sim, ncol = n.samples)
+    mean.prop <- vector(length = n.sim)
+    IS <- vector(length = n.sim)
+    
+    for(i in 1:n.sim){
+      mat[i,] <- rbinom(n = n.samples, size = n.events[j], prob = p.vec[j])
+      prop.mat <- mat/n.events[j]
+      mean.prop[i] <- mean(prop.mat[i,])
+      PS[i,] <- 1 - abs(prop.mat[i,] - mean.prop[i])
+      IS[i] <- mean(PS[i,])
+    }
+    
+    
+    quant.data[j, ] <- c(p.vec[j], quantile(IS, probs = c(0.025, 0.5, 0.975)))
+  }
+  quant.data
+}
+
+### generate CI's for balanus
+
+GenCI_IS(p.vec = Balanus.est.p, n.samples = 6, n.events = round(Balanus.n$n), n.sim = 10000)
+
+# Control
+
+# calculate IS for control
+
+Control.data.PS <- Control.data %>% mutate(AltProp = 1 - ProportionBalanus)
+
+Control.data.PS <- Control.data.PS %>% group_by(Ratio) %>% mutate(Diff.Prop = abs(ProportionBalanus - mean(ProportionBalanus)), 
+                                                                  Diff.Alt = abs(AltProp - mean(AltProp)))
+
+Control.data.PS <- Control.data.PS %>% mutate(PS = 1 - Diff.Prop)
+
+Control.data.IS <- Control.data.PS %>% group_by(Ratio) %>% summarise(IS = mean(PS))
+
+### generate CI's for control
+
+GenCI_IS(p.vec = Control.est.p, n.samples = 6, n.events = round(Control.n$n), n.sim = 10000)
+
+# Elminius
+
+Elminius.data.PS <- Elminius.data %>% mutate(AltProp = 1 - ProportionBalanus)
+
+Elminius.data.PS <- Elminius.data.PS %>% group_by(Ratio) %>% mutate(Diff.Prop = abs(ProportionBalanus - mean(ProportionBalanus)), 
+                                                                    Diff.Alt = abs(AltProp - mean(AltProp)))
+
+Elminius.data.PS <- Elminius.data.PS %>% mutate(PS = 1 - Diff.Prop)
+
+Elminius.data.IS <- Elminius.data.PS %>% group_by(Ratio) %>% summarise(IS = mean(PS))
+
+### generate CI's for Elminius
+
+GenCI_IS(p.vec = Elminius.est.p, n.samples = 6, n.events = round(Elminius.n$n), n.sim = 10000)
+
 
 
 
