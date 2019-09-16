@@ -193,17 +193,89 @@ Control.n.samples <- ladybird.data %>% filter(Trained == 'Control') %>% group_by
 
 GenCI.VarSampleVarEvent(p.vec = Control.p, n.samples = Control.n.samples$n, n.events = round(Control.n$n), n.sim = 10000)
 
+### Estimate IS and create 95% CI's for IS
 
+# Estimate IS at each of the relative abundances
 
+# Acyrth
 
+Acyrth.data.ind <- ladybird.data %>% filter(Trained == 'Acyrth')
 
+Acyrth.data.ind <- Acyrth.data.ind %>% mutate(Proportion = AcyrthEaten/(AcyrthEaten + AphisEaten))
 
+Acyrth.data.PS <- Acyrth.data.ind %>% mutate(Prop.Alt = 1 - Proportion)
 
+Acyrth.data.PS <- Acyrth.data.PS %>% group_by(RelativeDensity) %>% mutate(Diff.Prop = abs(Proportion - mean(Proportion)), 
+                                                                          Diff.Alt = abs(Prop.Alt - mean(Prop.Alt)))
 
+Acyrth.data.PS <- Acyrth.data.PS %>% mutate(PS = 1 - Diff.Prop)
 
+Acyrth.data.IS <- Acyrth.data.PS %>% group_by(RelativeDensity) %>% summarise(IS = mean(PS))
 
+# Aphis
 
+Aphis.data.ind <- ladybird.data %>% filter(Trained == 'Aphis')
 
+Aphis.data.ind <- Aphis.data.ind %>% mutate(Proportion = AcyrthEaten/(AcyrthEaten + AphisEaten))
 
+Aphis.data.PS <- Aphis.data.ind %>% mutate(Prop.Alt = 1 - Proportion)
 
+Aphis.data.PS <- Aphis.data.PS %>% group_by(RelativeDensity) %>% mutate(Diff.Prop = abs(Proportion - mean(Proportion)), 
+                                                                        Diff.Alt = abs(Prop.Alt - mean(Prop.Alt)))
 
+Aphis.data.PS <- Aphis.data.PS %>% mutate(PS = 1 - Diff.Prop)
+
+Aphis.data.IS <- Aphis.data.PS %>% group_by(RelativeDensity) %>% summarise(IS = mean(PS))
+
+# Control
+
+Control.data.ind <- ladybird.data %>% filter(Trained == 'Control')
+
+Control.data.ind <- Control.data.ind %>% mutate(Proportion = AcyrthEaten/(AcyrthEaten + AphisEaten))
+
+Control.data.PS <- Control.data.ind %>% mutate(Prop.Alt = 1 - Proportion)
+
+Control.data.PS <- Control.data.PS %>% group_by(RelativeDensity) %>% mutate(Diff.Prop = abs(Proportion - mean(Proportion)), 
+                                                                            Diff.Alt = abs(Prop.Alt - mean(Prop.Alt)))
+
+Control.data.PS <- Control.data.PS %>% mutate(PS = 1 - Diff.Prop)
+
+Control.data.IS <- Control.data.PS %>% group_by(RelativeDensity) %>% summarise(IS = mean(PS))
+
+### modify CI function above to calculate 95% CI's for IS
+
+GenCI_IS <- function(p.vec, n.samples, n.events, n.sim) {
+  
+  quant.data <- matrix(nrow = length(p.vec), ncol = 4)
+  
+  for(j in 1:length(p.vec)){
+    mat <- matrix(nrow = n.sim, ncol = n.samples[j])
+    PS <- matrix(nrow = n.sim, ncol = n.samples[j])
+    mean.prop <- vector(length = n.sim)
+    IS <- vector(length = n.sim)
+    
+    for(i in 1:n.sim){
+      mat[i,] <- rbinom(n = n.samples[j], size = n.events[j], prob = p.vec[j])
+      prop.mat <- mat/n.events[j]
+      mean.prop[i] <- mean(prop.mat[i,])
+      PS[i,] <- 1 - abs(prop.mat[i,] - mean.prop[i])
+      IS[i] <- mean(PS[i,])
+    }
+    
+    
+    quant.data[j, ] <- c(p.vec[j], quantile(IS, probs = c(0.025, 0.5, 0.975)))
+  }
+  quant.data
+}
+
+### Acyrth
+
+GenCI_IS(p.vec = Acyrth.p, n.samples = Acyrth.n.samples$n, n.events = round(Acyrth.n$n), n.sim = 10000)
+
+### Aphis
+
+GenCI_IS(p.vec = Aphis.p, n.samples = Aphis.n.samples$n, n.events = round(Aphis.n$n), n.sim = 10000)
+
+### Control
+
+GenCI_IS(p.vec = Control.p, n.samples = Control.n.samples$n, n.events = round(Control.n$n), n.sim = 10000)
