@@ -65,19 +65,46 @@ GenCI <- function(p.vec, n.samples, n.events, n.sim) {
 
 GenCI(p.vec = isopod.p, n.samples = 6, n.events = 10, n.sim = 10000)
 
+### Estimate IS and create predicted 95% CI's for IS
 
+### Calculate IS for each relative abundance
 
+isopod.data.ind <- read.csv('Ejdung2001Isopod.csv')
 
+colnames(isopod.data.ind)[1] <- 'RelativeDensity'
 
+isopod.data.PS <- isopod.data.ind %>% mutate(PropAlt = 1 - Proportion)
 
+isopod.data.PS <- isopod.data.PS %>% group_by(RelativeDensity) %>% mutate(Diff.Prop = abs(Proportion - mean(Proportion)), 
+                                                                          Diff.Alt = abs(PropAlt - mean(PropAlt)))
 
+isopod.data.PS <- isopod.data.PS %>% mutate(PS = 1 - Diff.Prop)
 
+isopod.data.IS <- isopod.data.PS %>% group_by(RelativeDensity) %>% summarise(IS = mean(PS))
 
+### calculate confidence intervals for IS estimates using modified version of CI function above
 
+GenCI_IS <- function(p.vec, n.samples, n.events, n.sim) {
+  
+  quant.data <- matrix(nrow = length(p.vec), ncol = 4)
+  
+  for(j in 1:length(p.vec)){
+    mat <- matrix(nrow = n.sim, ncol = n.samples)
+    PS <- matrix(nrow = n.sim, ncol = n.samples)
+    mean.prop <- vector(length = n.sim)
+    IS <- vector(length = n.sim)
+    
+    for(i in 1:n.sim){
+      mat[i,] <- rbinom(n = n.samples, size = n.events, prob = p.vec[j])
+      prop.mat <- mat/n.events
+      mean.prop[i] <- mean(prop.mat[i])
+      PS[i,] <- 1 - abs(prop.mat[i,] - mean.prop[i])
+      IS[i] <- mean(PS[i,])
+    }
+    
+    quant.data[j, ] <- c(p.vec[j], quantile(IS, probs = c(0.025, 0.5, 0.975)))
+  }
+  quant.data
+}
 
-
-
-
-
-
-
+GenCI_IS(p.vec = isopod.p, n.samples = 6, n.events = 10, n.sim = 10000)
