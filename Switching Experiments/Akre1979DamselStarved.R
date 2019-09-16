@@ -112,3 +112,46 @@ GenCI_EventNsVector <- function(p.vec, n.samples, n.events, n.sim) {
 GenCI_EventNsVector(p.vec = est.p, n.samples = 5, n.events = n, n.sim = 10000)
 
 # output gives p's and CI's
+
+### Estimate IS and create predicted 95% CI's for IS
+
+damsel.data.PS <- damsel.data %>% mutate(Proportion.Alternative = 1 - Proportion.in.Diet)
+
+damsel.data.PS <- damsel.data.PS %>% group_by(Factor.Relative.Density) %>% mutate(Diff.Prop = abs(Proportion.in.Diet - mean(Proportion.in.Diet)), 
+                                                                                  Diff.Alt = abs(Proportion.Alternative - mean(Proportion.Alternative))) 
+
+damsel.data.PS <- damsel.data.PS %>% mutate(PS = 1 - Diff.Prop)
+
+damsel.data.IS <- damsel.data.PS %>% group_by(Factor.Relative.Density) %>% summarise(IS = mean(PS))  
+
+# use predicted mean proportions to generate 95% CI's for IS at each relative abundance
+
+# modify confidence interval function above to get CI's for IS instead of variance
+
+GenCI_IS <- function(p.vec, n.samples, n.events, n.sim) {
+  
+  quant.data <- matrix(nrow = length(p.vec), ncol = 4)
+  
+  for(j in 1:length(p.vec)){
+    mat <- matrix(nrow = n.sim, ncol = n.samples)
+    PS <- matrix(nrow = n.sim, ncol = n.samples)
+    mean.prop <- vector(length = n.sim)
+    IS <- vector(length = n.sim)
+    
+    for(i in 1:n.sim){
+      mat[i,] <- rbinom(n = n.samples, size = n.events[j], prob = p.vec[j])
+      prop.mat <- mat/n.events[j]
+      mean.prop[i] <- mean(prop.mat[i,])
+      PS[i,] <- 1 - abs(prop.mat[i,] - mean.prop[i])
+      IS[i] <- mean(PS[i,])
+    }
+    
+    
+    quant.data[j, ] <- c(p.vec[j], quantile(IS, probs = c(0.025, 0.5, 0.975)))
+  }
+  quant.data
+}
+
+GenCI_IS(p.vec = est.p, n.samples = 5, n.events = n, n.sim = 10000)
+
+
